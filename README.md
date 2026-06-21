@@ -1,0 +1,1 @@
+# Rosler.EplanAddin.InsertSymbolMacroByPlaceholder
