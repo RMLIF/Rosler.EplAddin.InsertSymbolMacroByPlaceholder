@@ -176,10 +176,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             if (boxedDevice == null || parentFunction == null)
                 return false;
 
-            //var blackboxes =
-            //    boxedDevice.FunctionsInside
-            //               .Where(f => !f.Name.Contains(":"))
-            //               .ToList();
+           
 
 
             GlobalLogger.Info("===== BOXEDDEVICE DEBUG =====");
@@ -207,16 +204,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                 $"BOX ID={boxedDevice.ObjectIdentifier}");
 
 
-            //try
-            //{
-            //    GlobalLogger.Info(
-            //        $"BOX CATEGORY={boxedDevice.FunctionCategory}");
-            //}
-            //catch (Exception ex)
-            //{
-            //    GlobalLogger.Info(
-            //        $"BOX CATEGORY ERROR={ex.Message}");
-            //}
+            
 
             foreach (var f in boxedDevice.FunctionsInside)
             {
@@ -230,12 +218,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                     $"MAIN={f.IsMainFunction}");
             }
 
-            //var blackboxes =
-            //    boxedDevice.FunctionsInside
-            //        .Where(f =>
-            //            f.FunctionCategory ==
-            //            FunctionCategory.Blackbox)
-            //        .ToList();
+           
 
             var blackboxes = new List<BoxedDevice>();
 
@@ -284,10 +267,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             }
 
 
-            //Function renameFunction =
-            //    boxedDevice.FunctionsInside
-            //               .FirstOrDefault(f => !f.Name.Contains(":"))
-            //    ?? boxedDevice.FunctionsInside.FirstOrDefault();
+            
 
 
             GlobalLogger.Info(
@@ -300,10 +280,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             }
 
 
-            //Function renameFunction =
-            //    boxedDevice.FunctionsInside
-            //               .FirstOrDefault(f => f.Name == boxedDevice.Name)
-            //    ?? boxedDevice.FunctionsInside.FirstOrDefault();
+            
 
 
             Function renameFunction = null;

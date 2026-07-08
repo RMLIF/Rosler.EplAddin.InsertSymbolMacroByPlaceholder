@@ -76,22 +76,11 @@
     <Compile Include="Services\PhasenschienenService.cs" />
     <Compile Include="Services\PlaceholderSearchService.cs" />
     <Compile Include="Services\RenamingDeviceService.cs" />
-    <None Include="Legacy\PhasenschienenService_Alt.cs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Legacy\Backup Models\PlaceholderLocation_V2.cs" />
-    <None Include="Legacy\Backup Orchestrator\PlaceMacroOrchestrator_V2.cs" />
-    <None Include="Legacy\Backup Services\MacroPlacementService_V2.cs" />
-    <None Include="Legacy\Backup Services\PhasenschienenServiceV2 .cs" />
-    <None Include="Legacy\PlaceMacroAtPlaceholder_Alt.cs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <Compile Include="Models\BaseContext.cs" />
     <Compile Include="Models\PartCandidate.cs" />
     <Compile Include="Models\PlaceholderLocation.cs" />
     <Compile Include="Models\SchienenErgebnis.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <None Include="Legacy\Backup Services\PlaceholderSearchService_V2.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
