@@ -24,57 +24,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
         private const int MAX_VARIANT_INDEX = 4;
 
 
-
-        public SchienenErgebnis GetOrPreparePhasenschiene(Page page, int requiredSlots)
-        {
-            GlobalLogger.Info("Starte Phasenschienen-Ermittlung");
-
-            BaseContext context = FindBasePhasenschiene(page);
-
-            Function existingFunction = null;
-           
-
-            if (context.Reference != null)
-                existingFunction = context.Reference.ParentObject as Function;
-
-            int occupiedPins = GetCurrentOccupiedPins(existingFunction);
-
-
-            GlobalLogger.Info("Bereits belegte Pins: " + occupiedPins);
-            GlobalLogger.Info("Neue benötigte Pins: " + requiredSlots);
-
-            int totalNeededSlots = occupiedPins + requiredSlots;
-
-            GlobalLogger.Info("Gesamt benötigte Pins: " + totalNeededSlots);
-
-            List<PartCandidate> parts = LoadMatchingParts(context);
-
-            GlobalLogger.Info("Gefundene Artikel: " + parts.Count);
-
-            PartCandidate best = SelectBestPart(parts, totalNeededSlots);
-
-            if (best == null)
-            {
-                GlobalLogger.Error("Kein passender Artikel gefunden");
-            }
-
-            GlobalLogger.Info("Ausgewählter Artikel: " + best.Part.PartNr);
-
-            Function function = ApplySelection(page.Project, best, context);
-
-            int variant = CalculateVariantIndex(function);
-
-            GlobalLogger.Info("VariantIndex: " + variant);
-
-            return new SchienenErgebnis
-            {
-                ParentFunction = function,
-                VariantIndex = variant
-            };
-        }
-
-
-
         private BaseContext FindBasePhasenschiene(Page page)
         {
             DMObjectsFinder finder = new DMObjectsFinder(page.Project);
@@ -90,8 +39,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                 if (func != null && func.IsMainFunction && artRef.Article != null)
                 {
 
-                    GlobalLogger.Info(
-                            $"WC gefunden: {artRef.PartNr}");
+      
 
                     return new BaseContext
                     {
@@ -134,201 +82,13 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             return result;
         }
 
-        private PartCandidate SelectBestPart(List<PartCandidate> parts, int requiredSlots)
-        {
-            var best = parts
-                .Where(p => p.Slots >= requiredSlots)
-                .OrderBy(p => p.Slots)
-                .FirstOrDefault();
-
-            if (best != null)
-                return best;
-
-            return parts.OrderByDescending(p => p.Slots).FirstOrDefault();
-        }
-
-        private Function ApplySelection(Project project, PartCandidate best, BaseContext ctx)
-        {
-            if (best == null)
-
-                throw new BaseException(
-                    "Kein Artikel gefunden.",
-                    MessageLevel.Error
-                );
-
-
-            Function function = null;
-
-            if (ctx.Reference != null)
-                function = ctx.Reference.ParentObject as Function;
-
-            if (function == null)
-                return CreateNewDevice(project, best.Part.PartNr);
-
-            var refs = function.ArticleReferences;
-            ArticleReference currentRef = null;
-
-            if (refs != null && refs.Length > 0)
-                currentRef = refs[0];
-
-            if (currentRef == null || currentRef.PartNr != best.Part.PartNr)
-            {
-
-                using (var sp = SafetyPoint.Create())
-                {
-                    GlobalLogger.Info(
-                        "SET ARTICLE START");
-
-                    GlobalLogger.Info(
-                        "FUNCTION=" + function.Name);
-
-                    GlobalLogger.Info(
-                        "FUNCTION ID=" + function.ObjectIdentifier);
-
-                    GlobalLogger.Info(
-                        "FUNCTION CATEGORY=" + function.FunctionCategory);
-
-                    GlobalLogger.Info(
-                        "FUNCTION MAIN=" + function.IsMainFunction);
-
-                    GlobalLogger.Info(
-                        "NEW ARTICLE=" + best.Part.PartNr);
-
-                    GlobalLogger.Info(
-                        "NEW VARIANT=" + best.Part.Variant);
-
-                    if (currentRef != null)
-                    {
-                        GlobalLogger.Info(
-                            "CURRENT ARTICLE=" + currentRef.PartNr);
-
-                        currentRef.PartNr = best.Part.PartNr;
-                        currentRef.VariantNr = best.Part.Variant;
-                        currentRef.Count = 1;
-                        currentRef.StoreToObject();
-
-                        GlobalLogger.Info(
-                            "ARTICLE UPDATED");
-                    }
-                    else
-                    {
-                        GlobalLogger.Info(
-                            "NO ARTICLE REFERENCE -> ADD ARTICLE");
-
-                        function.AddArticleReference(
-                            best.Part.PartNr,
-                            best.Part.Variant,
-                            1,
-                            false);
-
-                        GlobalLogger.Info(
-                            "ARTICLE ADDED");
-                    }
-
-                    GlobalLogger.Info(
-                        "SET ARTICLE END");
-
-                    sp.Commit();
-                }
-
-
-
-                GlobalLogger.Info("==== ARTIKEL VOR UPDATEDEVICE ====");
-
-                foreach (var ar in function.ArticleReferences)
-                {
-                    GlobalLogger.Info(
-                        $"PartNr={ar.PartNr} Variant={ar.VariantNr}");
-                }
-
-
-                GlobalLogger.Info(
-                    $"Ausgewählter Artikel: {best.Part.PartNr}");
-
-                GlobalLogger.Info(
-                    $"Typnummer: {best.Part.Properties.ARTICLE_TYPENR}");
-
-                GlobalLogger.Info(
-                    $"Hersteller: {best.Part.Properties.ARTICLE_MANUFACTURER}");
-
-
-
-                new DeviceService().UpdateDevice(function);
-
-
-                GlobalLogger.Info("NACH UPDATEDEVICE");
-
-                foreach (var ar in function.ArticleReferences)
-                {
-                    GlobalLogger.Info($"ARTREF={ar.PartNr}");
-
-                }
-            }
-
-                return function;
-        }
-
-        private Function CreateNewDevice(Project project, string partNumber)
-        {
-            DeviceService devService = new DeviceService();
-
-            var created = devService.CreateDevice(project, partNumber, "1", new FunctionPropertyList());
-
-            if (created != null && created.Length > 0)
-                return created[0];
-
-            return null;
-        }
-
-        private int CalculateVariantIndex(Function function)
-        {
-            if (function == null) return 0;
-
-            int occupied = function.SubFunctions.Count(f => f.IsPlaced);
-
-            int variant = occupied / 3;
-
-            if (variant > MAX_VARIANT_INDEX)
-                variant = MAX_VARIANT_INDEX;
-
-            return variant;
-        }
-
-        
-
-
-
-        private int GetCurrentOccupiedPins(Function function)
-        {
-            if (function == null)
-                return 0;
-
-            int count = 0;
-
-            foreach (Function sub in function.SubFunctions)
-            {
-                if (!sub.IsPlaced)
-                    continue;
-
-                // ✅ KEINE Blackbox zählen
-                if (sub.FunctionCategory == FunctionCategory.Blackbox)
-                    continue;
-
-                count++;
-            }
-
-            return count;
-        }
-
-       
-
+    
         public void UpdateMacroPlacements(
     Page targetPage,
     Function parentFunction,
     StorableObject[] newPlacements)
         {
-            GlobalLogger.Info(
-                "################ UPDATE MACRO PLACEMENTS ################");
+           
 
             if (parentFunction == null || newPlacements == null)
                 return;
@@ -349,85 +109,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                     {
                         using (var sp = SafetyPoint.Create())
                         {
-                            GlobalLogger.Info(
-                                $"BOXEDDEVICE ALT: {bd.Name}");
-
-
-
-                            foreach (Function func in bd.FunctionsInside)
-                            {
-                                GlobalLogger.Info(
-                                    $"VOR RENAME ID={func.ObjectIdentifier} NAME={func.Name}");
-                            }
-
-
-
-                            GlobalLogger.Info(
-                                $"BOXEDDEVICE ALT: {bd.Name}");
-
-                            foreach (var func in bd.FunctionsInside)
-                            {
-                                if (func.FunctionCategory != FunctionCategory.Blackbox)
-                                    continue;
-
-                                GlobalLogger.Info(
-                                    $"BLACKBOX VOR RENAME ID={func.ObjectIdentifier} " +
-                                    $"NAME={func.Name} " +
-                                    $"MAIN={func.IsMainFunction}");
-
-
-                                GlobalLogger.Info(
-                                    $"ARTICLE_REF_COUNT={func.ArticleReferences.Length}");
-
-                                foreach (var ar in func.ArticleReferences)
-                                {
-                                    GlobalLogger.Info(
-                                        $"ARTIKEL={ar.PartNr} VARIANT={ar.VariantNr}");
-                                }
-
-
-                                try
-                                {
-                                    GlobalLogger.Info(
-                                        $"ARTICLE_REF_COUNT={func.ArticleReferences.Length}");
-
-                                    foreach (var ar in func.ArticleReferences)
-                                    {
-                                        GlobalLogger.Info(
-                                            $"ARTIKEL={ar.PartNr} VARIANT={ar.VariantNr}");
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    GlobalLogger.Info(
-                                        $"ARTICLE_REFERENCE ERROR={ex.Message}");
-                                }
-                            }
-
-
-                            foreach (Function func in bd.FunctionsInside)
-                            {
-                                GlobalLogger.Info(
-                                    $"VOR RENAME ID={func.ObjectIdentifier} NAME={func.Name}");
-                            }
-
-
-                            GlobalLogger.Info(
-                                $"BOX NAME={bd.Name}");
-
-                            foreach (var p in newPlacements.OfType<Function>())
-                            {
-                                GlobalLogger.Info(
-                                    $"PLACEMENT FUNC={p.Name}");
-
-                                GlobalLogger.Info(
-                                    $"PLACEMENT CAT={p.FunctionCategory}");
-
-                                GlobalLogger.Info(
-                                    $"PLACEMENT MAIN={p.IsMainFunction}");
-                            }
-
-
+               
 
                             var renamingDeviceService =
                                 new RenamingDeviceService();
@@ -437,109 +119,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                                     bd,
                                     parentFunction);
 
-                            GlobalLogger.Info(
-                                $"RENAME RESULT: {result}");
-
-
-                            GlobalLogger.Info(
-                                $"BOXEDDEVICE NACH RENAME: {bd.Name}");
-
-
-
-                            GlobalLogger.Info("===== PARENT CHECK =====");
-
-                            GlobalLogger.Info(
-                                $"BOX={bd.Name}");
-
-                            GlobalLogger.Info(
-                                $"BOX_PARENT={bd.ParentFunction?.Name}");
-
-                            GlobalLogger.Info(
-                                $"SUBCOUNT={bd.AllSubFunctions.Count()}");
-
-                            foreach (var sub in bd.AllSubFunctions)
-                            {
-                                GlobalLogger.Info(
-                                    $"SUB={sub.Name}");
-
-                                GlobalLogger.Info(
-                                    $"SUB_PARENT={sub.ParentFunction?.Name}");
-
-                                GlobalLogger.Info(
-                                    $"PLACED={sub.IsPlaced}");
-
-                                GlobalLogger.Info(
-                                    $"MAIN={sub.IsMainFunction}");
-                            }
-
-
-
-                            foreach (var func in bd.FunctionsInside)
-                            {
-                                if (func.FunctionCategory != FunctionCategory.Blackbox)
-                                    continue;
-
-                                GlobalLogger.Info(
-                                    $"BLACKBOX NACH RENAME ID={func.ObjectIdentifier} " +
-                                    $"NAME={func.Name} " +
-                                    $"MAIN={func.IsMainFunction}");
-
-
-                                GlobalLogger.Info(
-                                    $"ARTICLE_REF_COUNT={func.ArticleReferences.Length}");
-
-                                foreach (var ar in func.ArticleReferences)
-                                {
-                                    GlobalLogger.Info(
-                                        $"ARTIKEL={ar.PartNr} VARIANT={ar.VariantNr}");
-                                }
-
-
-                                try
-                                {
-                                    GlobalLogger.Info(
-                                        $"ARTICLE_REF_COUNT={func.ArticleReferences.Length}");
-
-                                    foreach (var ar in func.ArticleReferences)
-                                    {
-                                        GlobalLogger.Info(
-                                            $"ARTIKEL={ar.PartNr} VARIANT={ar.VariantNr}");
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    GlobalLogger.Info(
-                                        $"ARTICLE_REFERENCE ERROR={ex.Message}");
-                                }
-                            }
-
-
-                            GlobalLogger.Info(
-                                $"BOXEDDEVICE NACH RENAME: {bd.Name}");
-
-                            foreach (var func in bd.FunctionsInside)
-                            {
-                                if (func.FunctionCategory != FunctionCategory.Blackbox)
-                                    continue;
-
-                                GlobalLogger.Info(
-                                    $"BLACKBOX NACH RENAME ID={func.ObjectIdentifier} " +
-                                    $"NAME={func.Name} " +
-                                    $"MAIN={func.IsMainFunction}");
-
-                                foreach (var ar in func.ArticleReferences)
-                                {
-                                    GlobalLogger.Info(
-                                        $"   ARTIKEL={ar.PartNr}");
-                                }
-                            }
-
-                            foreach (Function func in bd.FunctionsInside)
-                            {
-                                GlobalLogger.Info(
-                                    $"NACH RENAME ID={func.ObjectIdentifier} NAME={func.Name}");
-                            }
-
 
                             sp.Commit();
                         }
@@ -547,27 +126,14 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                     catch (Exception ex)
                     {
                         GlobalLogger.Warn(
-                            $"BOXEDDEVICE RENAME FEHLER: {ex}");
+                            $"BOXEDDEVICE RENAME FEHLER: {ex.Message}");
                     }
 
                     try
                     {
 
-                        GlobalLogger.Info("VOR UPDATEDEVICE");
-                        GlobalLogger.Info(
-                            "BMK=" + parentFunction.Name);
-
-                        GlobalLogger.Info(
-                            "MAIN=" + parentFunction.IsMainFunction);
 
                         new DeviceService().UpdateDevice(parentFunction);
-
-                        GlobalLogger.Info("NACH UPDATEDEVICE");
-                        GlobalLogger.Info(
-                            "BMK=" + parentFunction.Name);
-
-                        GlobalLogger.Info(
-                            "MAIN=" + parentFunction.IsMainFunction);
 
                     }
                     catch (Exception ex)
@@ -607,48 +173,21 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                         $"ASSIGN FEHLER: {ex}");
                 }
 
+
                 try
                 {
-
-                    GlobalLogger.Info("VOR UPDATEDEVICE");
-                    GlobalLogger.Info(
-                        "BMK=" + parentFunction.Name);
-
-                    GlobalLogger.Info(
-                        "MAIN=" + parentFunction.IsMainFunction);
-
-                    new DeviceService().UpdateDevice(parentFunction);
-
-                    GlobalLogger.Info("NACH UPDATEDEVICE");
-                    GlobalLogger.Info(
-                        "BMK=" + parentFunction.Name);
-
-                    GlobalLogger.Info(
-                        "MAIN=" + parentFunction.IsMainFunction);
-
+                    new DeviceService()
+                        .UpdateDevice(parentFunction);
                 }
-                catch
+                catch (Exception ex)
                 {
                     GlobalLogger.Warn(
-                        "UpdateDevice nach Placement fehlgeschlagen");
+                        $"UpdateDevice nach Placement fehlgeschlagen: {ex.Message}");
                 }
+
             }
 
-            // =====================================================
-            // DEBUG CHECK
-            // =====================================================
 
-            foreach (var sub in parentFunction.SubFunctions)
-            {
-                GlobalLogger.Info(
-                    $"SUB: {sub.Name} Main={sub.IsMainFunction}");
-
-                if (string.IsNullOrEmpty(sub.Name))
-                {
-                    GlobalLogger.Warn(
-                        "Funktion ohne BMK gefunden!");
-                }
-            }
         }
 
       
@@ -754,36 +293,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
         }
 
 
-        public List<int> SplitSlotsToSchienen(List<PartCandidate> parts, int totalPins)
-        {
-            List<int> result = new List<int>();
-
-            if (parts == null || parts.Count == 0)
-                return result;
-
-            int maxSlots = parts.Max(p => p.Slots);
-
-            int remaining = totalPins;
-
-            while (remaining > 0)
-            {
-                // ✅ Verbindung braucht 3 Pins extra (nicht bei erster Schiene)
-                if (result.Count > 0)
-                {
-                    remaining += 3;
-                }
-
-                int use = Math.Min(maxSlots, remaining);
-
-                result.Add(use);
-
-                remaining -= use;
-            }
-
-            return result;
-        }
-
-
         public List<PartCandidate> GetParts(BaseContext ctx)
         {
             return LoadMatchingParts(ctx);
@@ -851,24 +360,13 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             List<Function> rails =
                 FindExistingPhasenschienen(page.Project);
 
-            GlobalLogger.Info(
-                $"RAILS FOUND={rails.Count}");
-
-            foreach (Function rail in rails)
-            {
-                GlobalLogger.Info(
-                    $"RAIL FOUND={rail.Name}");
-            }
+          
 
 
             int requiredPins =
                 CalculateRequiredPins(targets.Count);
 
-            GlobalLogger.Info(
-                $"PLACEHOLDER={targets.Count}");
-
-            GlobalLogger.Info(
-                $"REQUIRED PINS={requiredPins}");
+           
 
             // -------------------------------------------------
             // Schritt 2: Vorhandene Schienen analysieren
@@ -885,17 +383,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                 int free =
                     GetFreePins(rail);
 
-                GlobalLogger.Info(
-                    $"RAIL={rail.Name}");
-
-                GlobalLogger.Info(
-                    $"SLOTS={slots}");
-
-                GlobalLogger.Info(
-                    $"OCCUPIED={occupied}");
-
-                GlobalLogger.Info(
-                    $"FREE={free}");
+              
 
                 plan.Schienen.Add(
                     new SchienenEintrag
@@ -928,20 +416,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                 plan.Schienen.Sum(
                     s => s.FreiePlaetze);
 
-            GlobalLogger.Info(
-                $"OCCUPIED PINS={occupiedPins}");
-
-            GlobalLogger.Info(
-                $"NEW PINS={newPins}");
-
-            GlobalLogger.Info(
-                $"TOTAL REQUIRED PINS={totalRequiredPins}");
-
-            GlobalLogger.Info(
-                $"TOTAL CAPACITY PINS={totalCapacityPins}");
-
-            GlobalLogger.Info(
-                $"TOTAL FREE PINS={totalFreePins}");
+         
 
 
 
@@ -1277,16 +752,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
         }
 
 
-        public bool CanUpgradeExistingRail(
-            Function schiene,
-            int requiredPins)
-        {
-            return GetSlots(schiene)
-                   < requiredPins;
-        }
-
-       
-
         public List<int> CalculateRailSizes(
     int totalRequiredPins,
     List<PartCandidate> parts)
@@ -1370,19 +835,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             return 3;
         }
 
-        private PartCandidate SelectOptimalRail(List<PartCandidate> parts, int requiredSlots)
-        {
-            var best = parts
-                .Where(p => p.Slots >= requiredSlots)
-                .OrderBy(p => p.Slots)
-                .FirstOrDefault();
-
-            if (best != null)
-                return best;
-
-            return parts.OrderByDescending(p => p.Slots).FirstOrDefault();
-        }
-
 
         private void DistributeTargets(
             SchienenPlan plan,
@@ -1418,9 +870,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
         }
 
 
-
-
-
         private PlaceholderLocation PlaceTransitionMacro(
             PlaceholderLocation target)
         {
@@ -1449,14 +898,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             GlobalLogger.Info(
                 $"UEBERGANGSMAKRO PLATZIERT AUF {target.Page.Name}");
 
-            GlobalLogger.Info(
-                $"INSERTED COUNT={inserted.Length}");
-
-            foreach (var obj in inserted)
-            {
-                GlobalLogger.Info(
-                    $"TYPE={obj.GetType().FullName}");
-            }
+           
 
 
             PlaceholderLocation transitionAnchor = null;
@@ -1465,8 +907,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             {
                 if (obj is PlaceHolder ph)
                 {
-                    GlobalLogger.Info(
-                        $"PH FOUND={ph.Name}");
+                    
 
                     if (ph.Name == "Anker Phasenschiene")
                     {
@@ -1475,8 +916,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                                 ph.Page,
                                 ph.Location);
 
-                        GlobalLogger.Info(
-                            $"DIRECT TRANSITION ANCHOR={ph.Page.Name}");
+                        
 
                         break;
                     }
@@ -1519,11 +959,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                 unplaced.Remove();
             }
         }
-
-
-
-
-
 
 
     }

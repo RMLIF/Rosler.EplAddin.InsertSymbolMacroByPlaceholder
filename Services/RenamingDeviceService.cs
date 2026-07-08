@@ -137,13 +137,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                     newName.FUNC_COUNTER = counter;
                 }
 
-                GlobalLogger.Info("===== VOR RENAME DEVICE =====");
-
-                foreach (var f in function.AllSubFunctions)
-                {
-                    GlobalLogger.Info(
-                        $"SUB={f.Name} PARENT={f.ParentFunction?.Name}");
-                }
+               
 
                 nameService.RenameDevice(
                     function,
@@ -151,13 +145,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                     true,   // CDPs mit umbenennen
                     true);  // beschreibende Eigenschaften beibehalten
 
-                GlobalLogger.Info("===== NACH RENAME DEVICE =====");
-
-                foreach (var f in function.AllSubFunctions)
-                {
-                    GlobalLogger.Info(
-                        $"SUB={f.Name} PARENT={f.ParentFunction?.Name}");
-                }
+                
 
 
             }
@@ -176,47 +164,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             if (boxedDevice == null || parentFunction == null)
                 return false;
 
-           
-
-
-            GlobalLogger.Info("===== BOXEDDEVICE DEBUG =====");
-
-            GlobalLogger.Info(
-                $"BOX TYPE={boxedDevice.GetType().FullName}");
-
-            GlobalLogger.Info(
-                $"BOX ID={boxedDevice.ObjectIdentifier}");
-
-            GlobalLogger.Info(
-                $"BOX NAME={boxedDevice.Name}");
-
-            GlobalLogger.Info(
-                $"BOX PAGE={boxedDevice.Page?.Name}");
-
-
-            GlobalLogger.Info(
-                $"BOX CATEGORY={boxedDevice.FunctionCategory}");
-
-            GlobalLogger.Info(
-                $"BOX NAME={boxedDevice.Name}");
-
-            GlobalLogger.Info(
-                $"BOX ID={boxedDevice.ObjectIdentifier}");
-
-
-            
-
-            foreach (var f in boxedDevice.FunctionsInside)
-            {
-                GlobalLogger.Info(
-                    $"FUNC={f.Name}");
-
-                GlobalLogger.Info(
-                    $"CAT={f.FunctionCategory}");
-
-                GlobalLogger.Info(
-                    $"MAIN={f.IsMainFunction}");
-            }
 
            
 
@@ -227,61 +174,6 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                 blackboxes.Add(boxedDevice);
             }
 
-            GlobalLogger.Info(
-                $"BLACKBOX COUNT={blackboxes.Count}");
-
-
-            GlobalLogger.Info(
-                $"BLACKBOX COUNT={blackboxes.Count}");
-
-
-            foreach (var f in blackboxes)
-            {
-                GlobalLogger.Info(
-                    $"BLACKBOX ID={f.ObjectIdentifier} " +
-                    $"NAME={f.Name} " +
-                    $"MAIN={f.IsMainFunction}");
-
-                GlobalLogger.Info(
-                    $"ARTICLE_REF_COUNT={f.ArticleReferences.Length}");
-
-                foreach (var ar in f.ArticleReferences)
-                {
-                    GlobalLogger.Info(
-                        $"BLACKBOX ARTICLE={ar.PartNr} VARIANT={ar.VariantNr}");
-                }
-
-
-                GlobalLogger.Info(
-                        $"BLACKBOX ID={f.ObjectIdentifier}");
-
-                GlobalLogger.Info(
-                    $"NAME={f.Name}");
-
-                GlobalLogger.Info(
-                    $"CAT={f.FunctionCategory}");
-
-                GlobalLogger.Info(
-                    $"MAIN={f.IsMainFunction}");
-
-            }
-
-
-            
-
-
-            GlobalLogger.Info(
-                $"BOXEDDEVICE NAME={boxedDevice.Name}");
-
-            foreach (var f in boxedDevice.FunctionsInside)
-            {
-                GlobalLogger.Info(
-                    $"CANDIDATE={f.Name}");
-            }
-
-
-            
-
 
             Function renameFunction = null;
 
@@ -291,9 +183,7 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             }
 
 
-            GlobalLogger.Info(
-                $"RENAME FUNCTION={renameFunction?.Name}");
-
+           
 
             if (renameFunction == null)
                 return false;
@@ -310,28 +200,8 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
             };
 
 
-            GlobalLogger.Info(
-                $"ParentFunction={parentFunction.Name}");
-
-            GlobalLogger.Info(
-                $"RenameFunction={renameFunction?.Name}");
-
-            GlobalLogger.Info(
-                $"PARENT ARTICLE_REF_COUNT={parentFunction.ArticleReferences.Length}");
-
-            foreach (var ar in parentFunction.ArticleReferences)
-            {
-                GlobalLogger.Info(
-                    $"PARENT ARTICLE={ar.PartNr} VARIANT={ar.VariantNr}");
-            }
-
-
-
 
             bool result = RenameSelectedDevice(data);
-
-            GlobalLogger.Info(
-                $"RENAME RESULT: {result}");
 
             if (result)
             {
@@ -339,63 +209,17 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Services
                 {
                     DeviceService ds = new DeviceService();
 
-                    GlobalLogger.Info(
-                        $"UPDATEDEVICE AFTER RENAME BEGIN");
+                  
                     ds.UpdateDevice(renameFunction);
                     ds.UpdateDevice(parentFunction);
 
-                   
-
-
-                    GlobalLogger.Info(
-                        $"UPDATEDEVICE AFTER RENAME END");
                 }
                 catch (Exception ex)
                 {
-                    GlobalLogger.Info(
+                    GlobalLogger.Warn(
                         $"UPDATEDEVICE AFTER RENAME ERROR={ex.Message}");
                 }
             }
-
-
-            GlobalLogger.Info(
-                $"BOX ID={boxedDevice.ObjectIdentifier}");
-
-            GlobalLogger.Info(
-                $"BOX NAME={boxedDevice.Name}");
-
-            GlobalLogger.Info(
-                $"BOX MAIN={boxedDevice.IsMainFunction}");
-
-            GlobalLogger.Info(
-                $"BOX PARENT={boxedDevice.ParentFunction?.Name}");
-
-            foreach (var f in boxedDevice.FunctionsInside)
-            {
-                GlobalLogger.Info(
-                    $"FUNC={f.Name}");
-
-                GlobalLogger.Info(
-                    $"FUNC ID={f.ObjectIdentifier}");
-
-                GlobalLogger.Info(
-                    $"FUNC PARENT={f.ParentFunction?.Name}");
-
-                GlobalLogger.Info(
-                    $"FUNC MAIN={f.IsMainFunction}");
-            }
-
-
-
-            GlobalLogger.Info(
-                $"PARENT ID={parentFunction.ObjectIdentifier}");
-
-            GlobalLogger.Info(
-                $"RENAME ID={renameFunction.ObjectIdentifier}");
-
-            GlobalLogger.Info(
-                $"PARENT == RENAME = {parentFunction.ObjectIdentifier == renameFunction.ObjectIdentifier}");
-
 
 
             return result;
