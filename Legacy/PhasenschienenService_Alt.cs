@@ -523,6 +523,38 @@ public class PhasenschienenService
         return totalPins;
     }
 
+
+    public List<int> SplitSlotsToSchienen(List<PartCandidate> parts, int totalPins)
+    {
+        List<int> result = new List<int>();
+
+        if (parts == null || parts.Count == 0)
+            return result;
+
+        // größte verfügbare Schiene
+        int maxSlots = parts.Max(p => p.Slots);
+
+        int remaining = totalPins;
+
+        while (remaining > 0)
+        {
+            // ✅ Verbindung benötigt 3 Pins extra (außer erste)
+            if (result.Count > 0)
+            {
+                remaining += 3;
+            }
+
+            int use = Math.Min(remaining, maxSlots);
+
+            result.Add(use);
+
+            remaining -= use;
+        }
+
+        return result;
+    }
+
+
     public Function CreateNewUnplacedDevice(Project project, string partNumber)
     {
         try

@@ -1,55 +1,143 @@
-﻿using Eplan.EplApi.ApplicationFramework;
-using Eplan.EplApi.Base;
-using Eplan.EplApi.HEServices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿//using Eplan.EplApi.ApplicationFramework;
+//using Eplan.EplApi.Base;
+//using Eplan.EplApi.DataModel;
+//using Eplan.EplApi.DataModel.MasterData;
+//using Eplan.EplApi.MasterData;
+//using Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Infrastructure;
+//using Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Models;
+//using Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Orchestrator;
+//using System.Collections.Generic;
+
+//public class ActionInsertSymbolMacroByPlaceholder : IEplAction
+//{
+//    public bool Execute(ActionCallingContext context)
+//    {
+//        try
+//        {
+//            GlobalLogger.Info("Starte ActionInsertSymbolMacroByPlaceholder");
+
+//            // ✅ aktuelle Seite holen
+//            Project project = new ProjectManager().CurrentProject;
+//            Page page = project.Pages[0];
+
+//            // ✅ Dummy / Beispiel – MUSS bei dir ersetzt werden
+//            SymbolMacro macro = LoadMacro();
+
+//            // ✅ Platzhalter (Positionsliste)
+//            List<PlaceholderLocation> locations = GetPlaceholderLocations(page);
+
+//            // ✅ Artikel für Phasenschienen
+//            List<MDPart> parts = LoadParts();
+
+//            int neededSlots = locations.Count;
+
+//            var orchestrator = new PlaceMacroOrchestrator();
+
+//            // ✅ 🔥 HIER war dein Fehler → macro fehlte vorher!
+//            orchestrator.Execute(
+//                page,
+//                locations,
+//                macro,       // ✅ DAS hat gefehlt!
+//                parts,
+//                neededSlots
+//            );
+
+//            return true;
+//        }
+//        catch (System.Exception ex)
+//        {
+//            GlobalLogger.Error($"Fehler in Action: {ex.Message}");
+//            return false;
+//        }
+//    }
+
+//    public void GetActionProperties(ref ActionProperties actionProperties)
+//    {
+//    }
+
+//    public bool OnRegister(ref string name, ref int ordinal)
+//    {
+//        name = "RoslerInsertSymbolMacroByPlaceholder";
+//        ordinal = 20;
+//        return true;
+//    }
+
+//    // =====================================================================
+//    // ✅ HILFSMETHODEN (Dummy – ggf. anpassen)
+//    // =====================================================================
+
+//    private SymbolMacro LoadMacro()
+//    {
+//        // TODO: deinen echten Makro-Loader einsetzen
+//        return new SymbolMacro();
+//    }
+
+//    private List<PlaceholderLocation> GetPlaceholderLocations(Page page)
+//    {
+//        // TODO: echte Placeholder ermitteln
+//        return new List<PlaceholderLocation>();
+//    }
+
+//    private List<MDPart> LoadParts()
+//    {
+//        return new List<MDPart>();
+//    }
+//}
+
+using Eplan.EplApi.ApplicationFramework;
 using Eplan.EplApi.DataModel;
-using Eplan.EplApi.DataModel.Graphics;
+using Eplan.EplApi.HEServices;
+using Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Infrastructure;
+using Rosler.EplAddin.InsertSymbolMacroByPlaceholder.Orchestrator;
 using System.Windows.Forms;
 
 namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder
 {
     public class ActionInsertSymbolMacroByPlaceholder : IEplAction
     {
-        public bool Execute(ActionCallingContext oActionCallingContext)
+        public bool Execute(ActionCallingContext context)
         {
-            // 1. Parameter definieren
-            string placeholderName = "";
+            string placeholderName = string.Empty;
 
-            // Über Action-Parameter auslesen
-            oActionCallingContext.GetParameter("PlaceholderName", ref placeholderName);
+            // 👉 Parameter auslesen
+            context.GetParameter("PlaceholderName", ref placeholderName);
 
-            // 2. Alle aktuell im EPLAN selektierten Seiten ermitteln
+            if (string.IsNullOrWhiteSpace(placeholderName))
+            {
+                GlobalLogger.Warn("Kein Platzhalter-Name übergeben");
+                return false;
+            }
+
+            // 👉 aktuelle Auswahl (Seiten)
             SelectionSet selectionSet = new SelectionSet();
             Page[] selectedPages = selectionSet.GetSelectedPages();
 
-            // Prüfen, ob mindestens eine Seite ausgewählt wurde
-            if (selectedPages != null && selectedPages.Length > 0)
+            if (selectedPages == null || selectedPages.Length == 0)
             {
-                // Instanz Ihrer Logik-Klasse erstellen
-                PlaceMacroAtPlaceholder logic = new PlaceMacroAtPlaceholder();
-
-                // Schleife entfernt: Nur die erste/aktuell markierte Seite verarbeiten
-                Page targetPage = selectedPages[0];
-
-                // Die Methode für die einzelne Seite aufrufen
-                logic.PlaceMacroPlaceholder(targetPage, placeholderName);
-            }
-            else
-            {
-                // Fehlerbehandlung: Keine Seite im Seiten-Navigator markiert
-                MessageBox.Show("Bitte wählen Sie zuerst eine Schaltplanseite im Navigator aus.");
+                MessageBox.Show("Bitte wählen Sie eine Schaltplanseite aus.");
+                return false;
             }
 
-            return true;
+            Eplan.EplApi.DataModel.Page targetPage = selectedPages[0];
+
+            try
+            {
+                // ✅ NEUER Einstiegspunkt: Orchestrator
+                var orchestrator = new PlaceMacroOrchestrator();
+                orchestrator.Execute(targetPage, placeholderName);
+
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                GlobalLogger.Error("Fehler in Action: " + ex.Message);
+                return false;
+            }
         }
 
         public void GetActionProperties(ref ActionProperties actionProperties)
         {
-            // Optional: Hier können Sie Beschreibungen für die Parameter hinterlegen
+            // Optional: Beschreibung/Hilfe für Parameter
         }
 
         public bool OnRegister(ref string Name, ref int Ordinal)
@@ -60,74 +148,3 @@ namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder
         }
     }
 }
-
-//using Eplan.EplApi.ApplicationFramework;
-//using Eplan.EplApi.Base;
-//using Eplan.EplApi.HEServices;
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-//using System.Threading.Tasks;
-//using Eplan.EplApi.DataModel;
-//using Eplan.EplApi.DataModel.Graphics;
-//using Eplan.EplApi.HEServices;
-//using Eplan.EplApi.Base;
-//using System.Windows.Forms;
-
-//namespace Rosler.EplAddin.InsertSymbolMacroByPlaceholder
-//{
-//    public class ActionInsertSymbolMacroByPlaceholder : IEplAction
-//    {
-//        public bool Execute(ActionCallingContext oActionCallingContext)
-//        {
-//            // 1. Parameter definieren
-//            string placeholderName = "";
-//            //string macroPath = @"C:\EPLAN_Data\Makros\MeinSymbolmakro.ems";
-
-//            // Alternativ über Action-Parameter auslesen, falls gewünscht:
-//            oActionCallingContext.GetParameter("PlaceholderName", ref placeholderName);
-//            // oActionCallingContext.GetParameter("MacroPath", ref macroPath);
-
-//            // 2. Alle aktuell im EPLAN selektierten Seiten ermitteln
-//            SelectionSet selectionSet = new SelectionSet();
-//            Page[] selectedPages = selectionSet.GetSelectedPages();
-
-//            // Prüfen, ob überhaupt Seiten ausgewählt wurden
-//            if (selectedPages != null && selectedPages.Length > 0)
-//            {
-//                // Instanz Ihrer Logik-Klasse erstellen
-//                PlaceMacroAtPlaceholder logic = new PlaceMacroAtPlaceholder();
-
-//                // Schleife über JEDE ausgewählte Seite
-//                foreach (Page targetPage in selectedPages)
-//                {
-//                    // Die Methode aufrufen. Ihre Logik prüft bereits intern, 
-//                    // ob der Platzhalter existiert, und bricht fehlerfrei ab, wenn nicht.
-//                    logic.PlaceMacroPlaceholder(targetPage, placeholderName);
-//                }
-//            }
-//            else
-//            {
-//                // Fehlerbehandlung: Keine Seite im Seiten-Navigator markiert
-//                MessageBox.Show("Bitte wählen Sie zuerst mindestens eine Schaltplanseite im Navigator aus.");
-//            }
-
-//            return true;
-//        }
-
-
-//        public void GetActionProperties(ref ActionProperties actionProperties)
-//        {
-
-//        }
-
-//        public bool OnRegister(ref string Name, ref int Ordinal)
-//        {
-//            Name = "RoslerInsertSymbolMacroByPlaceholder";
-//            Ordinal = 20;
-//            return true;
-//        }
-
-//    }
-//}

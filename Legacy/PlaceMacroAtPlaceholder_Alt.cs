@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-public class PlaceMacroAtPlaceholder
+public class PlaceMacroAtPlaceholder_Alt
 {
     public void PlaceMacroPlaceholder(Page targetPage, string placeholderName)
     {
@@ -17,7 +17,7 @@ public class PlaceMacroAtPlaceholder
 
         Project currentProject = targetPage.Project;
         Insert insertService = new Insert();
-        PhasenschienenService schienenService = new PhasenschienenService();
+        //PhasenschienenService_Alt schienenService = new PhasenschienenService_Alt();
 
         List<KeyValuePair<Page, PointD>> projectTargetLocations = new List<KeyValuePair<Page, PointD>>();
 
@@ -58,7 +58,7 @@ public class PlaceMacroAtPlaceholder
             System.Diagnostics.Debug.WriteLine($"[LOGIK] Starte EINMALIGE Artikelprüfung im Service für {totalProjectPins} Gesamt-Pins...");
 
             // 🟢 NUTZT DEN BEREINIGTEN SERVICE: Führt Artikeltausch UND das Löschen alter Grafiken sauber im Service aus!
-            var ergebnis = schienenService.GetOrPreparePhasenschiene(targetPage, totalProjectPins);
+          //  var ergebnis = schienenService.GetOrPreparePhasenschiene(targetPage, totalProjectPins);
 
             if (ergebnis == null || ergebnis.ParentFunction == null)
             {
