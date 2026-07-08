@@ -66,12 +66,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActionInsertPlaceholderText.cs" />
     <Compile Include="ActionInsertSymbolMacroByPlaceholder.cs" />
     <Compile Include="AddinModule.cs" />
     <Compile Include="Infrastructure\GlobalLogger.cs" />
     <Compile Include="Models\ExistingPlacement.cs" />
     <Compile Include="Models\SchienenPlan.cs" />
     <Compile Include="Orchestrator\PlaceMacroOrchestrator.cs" />
+    <Compile Include="PlatzhalterErzeugen\CreatePlaceholders.cs" />
     <Compile Include="Services\MacroPlacementService.cs" />
     <Compile Include="Services\PhasenschienenService.cs" />
     <Compile Include="Services\PlaceholderSearchService.cs" />
